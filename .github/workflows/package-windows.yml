@@ -1,25 +1,28 @@
-name: Build Windows MSI
+name: Build and Release Windows App
 
 on:
-  workflow_dispatch: # Permet aussi de déclencher manuellement le build depuis l'interface GitHub
+  push:
+    tags:
+      - 'v*' # Se déclenche quand tu pousses un tag comme v1.0.0, v1.0.1, etc.
+  workflow_dispatch: # Garde la possibilité de tester manuellement
+
+permissions:
+  contents: write # Indispensable pour autoriser le script à créer la Release
 
 jobs:
-  build-windows:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout du code
+      - name: Récupérer le code
         uses: actions/checkout@v4
 
-      - name: Configuration du JDK 21
-        uses: actions/setup-java@v5
+      - name: Installer JDK 21
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
-
-      - name: Installation de WiX Toolset
-        run: choco install wixtoolset -y
 
       - name: Compiler le JAR avec Maven
         run: mvn clean package
@@ -30,24 +33,27 @@ jobs:
           New-Item -ItemType Directory -Force -Path "input-jar"
           Copy-Item "target/pdf-interleaver.jar" -Destination "input-jar/"
 
-      - name: Générer l'installeur MSI avec jpackage
+      - name: Générer l'application portable native
         shell: pwsh
         run: |
-          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.11\bin"
           jpackage `
-            --type msi `
+            --type app-image `
             --input input-jar `
             --name "PdfInterleaver" `
             --main-jar pdf-interleaver.jar `
             --main-class PdfInterleaverApp `
-            --app-version 1.0.0 `
-            --dest dist `
-            --win-dir-chooser `
-            --win-menu `
-            --win-shortcut
+            --dest dist
 
-      - name: Uploader l'installeur (.msi)
-        uses: actions/upload-artifact@v4
+      - name: Compacter le dossier en ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/PdfInterleaver" -DestinationPath "dist/PdfInterleaver-Windows.zip"
+
+      - name: Publier la Release GitHub
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: PdfInterleaver-Installer-Windows
-          path: dist/*.msi
+          files: dist/PdfInterleaver-Windows.zip
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
