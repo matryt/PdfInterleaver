@@ -34,7 +34,7 @@ public class PdfInterleaverApp extends JFrame {
         JButton btnChoose1 = new JButton("Sélectionner PDF 1 (recto)");
         JButton btnChoose2 = new JButton("Sélectionner PDF 2 (verso)");
 
-        btnChoose1.addActionListener(_ -> {
+        btnChoose1.addActionListener(e -> {
             File f = pickPdfFile();
             if (f != null) {
                 file1 = f;
@@ -43,7 +43,7 @@ public class PdfInterleaverApp extends JFrame {
             }
         });
 
-        btnChoose2.addActionListener(_ -> {
+        btnChoose2.addActionListener(e -> {
             File f = pickPdfFile();
             if (f != null) {
                 file2 = f;
